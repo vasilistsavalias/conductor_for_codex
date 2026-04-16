@@ -78,7 +78,7 @@ Ensure-Dir (Join-Path $CodexHome 'skills')
 $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $bundledSkillsRoot = Join-Path $scriptDir 'skills'
 $bundledTemplatesRoot = Join-Path $scriptDir 'templates'
-$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','update-conductor')
+$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-review','conductor-revert','update-conductor')
 
 if (-not (Test-Path $bundledSkillsRoot)) {
   throw "Missing bundled skills directory: $bundledSkillsRoot"
@@ -111,10 +111,27 @@ if (Test-Path $bundledTemplatesRoot) {
   } else {
     Ensure-Dir $dstTemplatesRoot
     Copy-Item -Recurse -Force -Path (Join-Path $bundledTemplatesRoot '*') -Destination $dstTemplatesRoot
+    Get-ChildItem -Path $dstTemplatesRoot -Filter '.DS_Store' -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force
     Write-Host "  Installed templates: $dstTemplatesRoot" -ForegroundColor Green
   }
 } else {
   Write-Host "  Missing bundled templates directory (skipping): $bundledTemplatesRoot" -ForegroundColor Yellow
+}
+
+# Install Conductor skill catalog (skip if destination exists)
+$catalogSrc = Join-Path $bundledSkillsRoot 'catalog.md'
+if (Test-Path $catalogSrc) {
+  $catalogDstDir = Join-Path $CodexHome 'conductor\skills'
+  $catalogDst = Join-Path $catalogDstDir 'catalog.md'
+  if (Test-Path $catalogDst) {
+    Write-Host "  Exists, skipping skill catalog: $catalogDst" -ForegroundColor Gray
+  } else {
+    Ensure-Dir $catalogDstDir
+    Copy-Item -Path $catalogSrc -Destination $catalogDst -Force
+    Write-Host "  Installed skill catalog: $catalogDst" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  Missing bundled skill catalog (skipping): $catalogSrc" -ForegroundColor Yellow
 }
 
 # Plain-text init script for auditability.
@@ -161,7 +178,7 @@ Write-Host "  codex_conductor_init (Conductor for Codex)" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','update-conductor')
+$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-review','conductor-revert','update-conductor')
 $dstSkillsRoot = Join-Path $RepoRoot '.codex\skills'
 Ensure-Dir $dstSkillsRoot
 
@@ -187,10 +204,26 @@ if (Test-Path $srcTemplatesRoot) {
   } else {
     Ensure-Dir $dstTemplatesRoot
     Copy-Item -Recurse -Force -Path (Join-Path $srcTemplatesRoot '*') -Destination $dstTemplatesRoot
+    Get-ChildItem -Path $dstTemplatesRoot -Filter '.DS_Store' -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force
     Write-Host "  Installed: conductor\\templates" -ForegroundColor Green
   }
 } else {
   Write-Host "  NOTE: Missing templates at $srcTemplatesRoot (re-run conductor_for_codex.ps1)" -ForegroundColor Yellow
+}
+
+$srcCatalog = Join-Path $CodexHome 'conductor\skills\catalog.md'
+$dstCatalogDir = Join-Path $RepoRoot 'conductor\skills'
+$dstCatalog = Join-Path $dstCatalogDir 'catalog.md'
+if (Test-Path $srcCatalog) {
+  if (Test-Path $dstCatalog) {
+    Write-Host "  Exists, skipping: conductor\\skills\\catalog.md" -ForegroundColor Gray
+  } else {
+    Ensure-Dir $dstCatalogDir
+    Copy-Item -Path $srcCatalog -Destination $dstCatalog -Force
+    Write-Host "  Installed: conductor\\skills\\catalog.md" -ForegroundColor Green
+  }
+} else {
+  Write-Host "  NOTE: Missing skill catalog at $srcCatalog (re-run conductor_for_codex.ps1)" -ForegroundColor Yellow
 }
 
 $agentsRule = 'Always run $conductor-status before doing anything else.'
@@ -202,7 +235,7 @@ Write-Host "  Ensured .gitignore contains conductor/" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next:" -ForegroundColor White
 Write-Host "  1) Start Codex in this repo" -ForegroundColor White
-Write-Host "  2) Run /conductor:status" -ForegroundColor White
+Write-Host '  2) Run $conductor-status' -ForegroundColor White
 '@
 
 $initCmd = @'

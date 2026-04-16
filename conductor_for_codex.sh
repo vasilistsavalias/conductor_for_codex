@@ -42,7 +42,7 @@ fi
 mkdir -p "$CODEX_HOME/skills" "$BIN_DIR"
 
 # Install skills one-by-one (skip if destination exists)
-for s in conductor-setup conductor-status conductor-implement conductor-newTrack conductor-revert update-conductor; do
+for s in conductor-setup conductor-status conductor-implement conductor-newTrack conductor-review conductor-revert update-conductor; do
   src_file="$BUNDLED_SKILLS_ROOT/$s/SKILL.md"
   dst_dir="$CODEX_HOME/skills/$s"
   dst_file="$dst_dir/SKILL.md"
@@ -68,10 +68,24 @@ if [[ -d "$BUNDLED_TEMPLATES_ROOT" ]]; then
   else
     mkdir -p "$CODEX_HOME/conductor/templates"
     cp -a "$BUNDLED_TEMPLATES_ROOT"/. "$CODEX_HOME/conductor/templates/"
+    find "$CODEX_HOME/conductor/templates" -name .DS_Store -type f -delete
     echo "  Installed templates: $CODEX_HOME/conductor/templates"
   fi
 else
   echo "  Missing bundled templates directory (skipping): $BUNDLED_TEMPLATES_ROOT"
+fi
+
+# Install Conductor skill catalog (skip if destination exists)
+if [[ -f "$BUNDLED_SKILLS_ROOT/catalog.md" ]]; then
+  if [[ -e "$CODEX_HOME/conductor/skills/catalog.md" ]]; then
+    echo "  Exists, skipping skill catalog: $CODEX_HOME/conductor/skills/catalog.md"
+  else
+    mkdir -p "$CODEX_HOME/conductor/skills"
+    cp -a "$BUNDLED_SKILLS_ROOT/catalog.md" "$CODEX_HOME/conductor/skills/catalog.md"
+    echo "  Installed skill catalog: $CODEX_HOME/conductor/skills/catalog.md"
+  fi
+else
+  echo "  Missing bundled skill catalog (skipping): $BUNDLED_SKILLS_ROOT/catalog.md"
 fi
 
 # Install init command only if missing
@@ -95,7 +109,7 @@ set -euo pipefail
 REPO_ROOT="${1:-$(pwd)}"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 
-skill_names=(conductor-setup conductor-status conductor-implement conductor-newTrack conductor-revert update-conductor)
+skill_names=(conductor-setup conductor-status conductor-implement conductor-newTrack conductor-review conductor-revert update-conductor)
 
 mkdir -p "$REPO_ROOT/.codex/skills"
 
@@ -118,10 +132,24 @@ if [[ -d "$CODEX_HOME/conductor/templates" ]]; then
   else
     mkdir -p "$REPO_ROOT/conductor/templates"
     cp -a "$CODEX_HOME/conductor/templates"/. "$REPO_ROOT/conductor/templates/"
+    find "$REPO_ROOT/conductor/templates" -name .DS_Store -type f -delete
     echo "  Installed: conductor/templates"
   fi
 else
   echo "  NOTE: Missing templates at $CODEX_HOME/conductor/templates (re-run conductor_for_codex.sh)"
+fi
+
+# Install Conductor skill catalog (non-destructive)
+if [[ -f "$CODEX_HOME/conductor/skills/catalog.md" ]]; then
+  if [[ -e "$REPO_ROOT/conductor/skills/catalog.md" ]]; then
+    echo "  Exists, skipping: conductor/skills/catalog.md"
+  else
+    mkdir -p "$REPO_ROOT/conductor/skills"
+    cp -a "$CODEX_HOME/conductor/skills/catalog.md" "$REPO_ROOT/conductor/skills/catalog.md"
+    echo "  Installed: conductor/skills/catalog.md"
+  fi
+else
+  echo "  NOTE: Missing skill catalog at $CODEX_HOME/conductor/skills/catalog.md (re-run conductor_for_codex.sh)"
 fi
 
 rule_line='Always run $conductor-status before doing anything else.'

@@ -37,7 +37,7 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 
 2. **Verify Track Exists:** Check if the **Tracks Registry** is not empty.
 
-3. **Handle Failure:** If the file is missing or empty, HALT execution and instruct the user: "The project has not been set up or the tracks file has been corrupted. Please run `/conductor:setup` to set up the plan, or restore the tracks file."
+3. **Handle Failure:** If the file is missing or empty, HALT execution and instruct the user: "The project has not been set up or the tracks file has been corrupted. Please run `$conductor-setup` to set up the plan, or restore the tracks file."
 
 ---
 
@@ -47,7 +47,7 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 
 1. **Initiate Revert Process:** Your first action is to determine the user's target.
 
-2. **Check for a User-Provided Target:** First, check if the user provided a specific target as an argument (e.g., `/conductor:revert track <track_id>`).
+2. **Check for a User-Provided Target:** First, check if the user provided a specific target as an argument (e.g., `$conductor-revert track <track_id>`).
 
    - **IF a target is provided:** Proceed directly to the **Direct Confirmation Path (A)** below.
    - **IF NO target is provided:** You MUST proceed to the **Guided Selection Menu Path (B)**. This is the default behavior.
@@ -66,9 +66,9 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
    - **PATH B: Guided Selection Menu**
      1. **Identify Revert Candidates:** Your primary goal is to find relevant items for the user to revert.
         - **Scan All Plans:** You MUST read the **Tracks Registry** and every track's **Implementation Plan** (resolved via **Universal File Resolution Protocol** using the track's index file).
-        - **Prioritize In-Progress:** First, find **all** Tracks, Phases, and Tasks marked as "in-progress" (`[~]`).
-        - **Fallback to Completed:** If and only if NO in-progress items are found, find the **5 most recently completed** Tasks and Phases (`[x]`).
-     2. **Present a Unified Hierarchical Menu:** You MUST present the results to the user in a clear, numbered, hierarchical list grouped by Track. The introductory text MUST change based on the context.
+        - **Prioritize In-Progress:** First, find the **top 3** most relevant Tracks, Phases, and Tasks marked as "in-progress" (`[~]`).
+        - **Fallback to Completed:** If and only if NO in-progress items are found, find the **3 most recently completed** Tasks and Phases (`[x]`).
+     2. **Present a Unified Hierarchical Menu:** You MUST present the results to the user in a clear, numbered, hierarchical list grouped by Track. Limit the menu to a maximum of 4 items, including an "Other" option. The introductory text MUST change based on the context.
         - **Example when in-progress items are found:**
           > "I found multiple in-progress items. Please choose which one to revert:
           >
@@ -89,8 +89,8 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
           >
           > 1. A different Track, Task, or Phase."
      3. **Process User's Choice:**
-        - If the user's response is **A** or **B**, set this as the `target_intent` and proceed directly to Phase 2.
-        - If the user's response is **C** or another value that does not match A or B, you must engage in a dialogue to find the correct target. Ask clarifying questions like:
+        - If the user's response matches a listed item, set this as the `target_intent` and proceed directly to Phase 2.
+        - If the user's response is "Other" or does not match a listed item, engage in a dialogue to find the correct target. Ask clarifying questions like:
           - "What is the name or ID of the track you are looking for?"
           - "Can you describe the task you want to revert?"
           - Once a target is identified, loop back to Path A for final confirmation.
@@ -138,11 +138,11 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
    >   `- <sha_code_commit> ('feat: Add user profile')` > `- <sha_plan_commit> ('conductor(plan): Mark task complete')`
    > - **Action:** I will run `git revert` on these commits in reverse order.
 
-2. **Final Go/No-Go:** Ask for final confirmation: "**Do you want to proceed? (yes/no)**".
+2. **Final Go/No-Go:** Ask for final confirmation: "**Do you want to proceed with the drafted plan?**".
    - **Structure:**
-     A) Yes
-     B) No
-   1. If "yes", proceed to Phase 4. If "no", ask clarifying questions to get the correct plan for revert.
+     A) Approve and run the revert actions.
+     B) Revise the revert plan.
+   1. If "Approve", proceed to Phase 4. If "Revise", ask what should change and update the execution plan before asking again.
 
 ---
 

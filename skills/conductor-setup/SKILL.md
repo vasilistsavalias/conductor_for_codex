@@ -21,7 +21,7 @@ You are an AI agent. Your primary function is to set up and manage a software pr
 
 CRITICAL: You must validate the success of every tool call. If any tool call fails, you MUST halt the current operation immediately, announce the failure to the user, and await further instructions.
 
-CRITICAL: When determining model complexity, Favor  deep reasoning. Context driven development is everything.
+CRITICAL: When determining model complexity, favor deep reasoning. Context-driven development is everything.
 
 ---
 
@@ -31,7 +31,7 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
 
 1. **Read State File:** Check for the existence of `conductor/setup_state.json`.
 
-   - If it does not exist, this is a new project setup. Proceed directly to Step 1.2.
+   - If it does not exist, perform the artifact audit in Step 1.1.3. If the audit finds a coherent resume target, jump there; otherwise proceed to Step 1.2.
    - If it exists, read its content.
 
 2. **Resume Based on State:**
@@ -39,15 +39,30 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
    - Let the value of `last_successful_step` in the JSON file be `STEP`.
    - Based on the value of `STEP`, jump to the **next logical section**:
 
+   - If `STEP` is empty, proceed to **Section 2.0**.
    - If `STEP` is "2.1_product_guide", announce "Resuming setup: The Product Guide (`product.md`) is already complete. Next, we will create the Product Guidelines." and proceed to **Section 2.2**.
    - If `STEP` is "2.2_product_guidelines", announce "Resuming setup: The Product Guide and Product Guidelines are complete. Next, we will define the Technology Stack." and proceed to **Section 2.3**.
    - If `STEP` is "2.3_tech_stack", announce "Resuming setup: The Product Guide, Guidelines, and Tech Stack are defined. Next, we will select Code Styleguides." and proceed to **Section 2.4**.
    - If `STEP` is "2.4_code_styleguides", announce "Resuming setup: All guides and the tech stack are configured. Next, we will define the project workflow." and proceed to **Section 2.5**.
-   - If `STEP` is "2.5_workflow", announce "Resuming setup: The initial project scaffolding is complete. Next, we will generate the first track." and proceed to **Phase 2 (3.0)**.
+   - If `STEP` is "2.5_workflow", announce "Resuming setup: The workflow is defined. Next, we will evaluate optional agent skills." and proceed to **Section 2.6**.
+   - If `STEP` is "2.6_agent_skills", announce "Resuming setup: The initial project scaffolding is complete. Next, we will generate the first track." and proceed to **Phase 2 (3.0)**.
    - If `STEP` is "3.3_initial_track_generated":
-     - Announce: "The project has already been initialized. You can create a new track with `/conductor:newTrack` or start implementing existing tracks with `/conductor:implement`."
+     - Announce: "The project has already been initialized. You can create a new track with `$conductor-newTrack` or start implementing existing tracks with `$conductor-implement`."
      - Halt the `setup` process.
    - If `STEP` is unrecognized, announce an error and halt.
+
+3. **Artifact Audit Fallback:** If `setup_state.json` is absent or incomplete, audit existing files/directories in `conductor/` and resume from the most advanced coherent state instead of restarting from scratch.
+
+   | Artifact Exists | Resume Target | Announcement |
+   | --- | --- | --- |
+   | Complete `tracks/<track_id>/` with `spec.md`, `plan.md`, `metadata.json`, and `index.md` | Halt | "The project is already initialized. Use `$conductor-newTrack`, `$conductor-implement`, or `$conductor-status`." |
+   | `index.md` and `tracks.md` | Section 3.0 | "Resuming setup: scaffolding exists. Next: verify or generate the first track." |
+   | `workflow.md` | Section 2.6 | "Resuming setup: workflow is defined. Next: evaluate optional agent skills." |
+   | `code_styleguides/` | Section 2.5 | "Resuming setup: guides and tech stack are configured. Next: define project workflow." |
+   | `tech-stack.md` | Section 2.4 | "Resuming setup: tech stack is defined. Next: select code style guides." |
+   | `product-guidelines.md` | Section 2.3 | "Resuming setup: product guidelines are complete. Next: define the technology stack." |
+   | `product.md` | Section 2.2 | "Resuming setup: product guide is complete. Next: create product guidelines." |
+   | none | Section 2.0 | none |
 
 ---
 
@@ -76,11 +91,10 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
 
    - **Classify Project:** Determine if the project is "Brownfield" (Existing) or "Greenfield" (New) based on the following indicators:
    - **Brownfield Indicators:**
-     - Check for existence of version control directories: `.git`, `.svn`, or `.hg`.
-     - If a `.git` directory exists, execute `git status --porcelain`. If the output is not empty, classify as "Brownfield" (dirty repository).
-     - Check for dependency manifests: `package.json`, `pom.xml`, `requirements.txt`, `go.mod`.
-     - Check for source code directories: `src/`, `app/`, `lib/` containing code files.
-     - If ANY of the above conditions are met (version control directory, dirty git repo, dependency manifest, or source code directories), classify as **Brownfield**.
+     - Check for dependency manifests: `package.json`, `pom.xml`, `requirements.txt`, `go.mod`, `Cargo.toml`.
+     - Check for source code directories: `src/`, `app/`, `lib/`, `bin/` containing code files.
+     - If a `.git` directory exists, execute `git status --porcelain`. Ignore changes under `conductor/`. If non-Conductor changes are present, treat that as a Brownfield signal.
+     - If ANY dependency manifest or source code directory is found, classify as **Brownfield**.
    - **Greenfield Condition:**
      - Classify as **Greenfield** ONLY if NONE of the "Brownfield Indicators" are found AND the current directory is empty or contains only generic documentation (e.g., a single `README.md` file) without functional code or dependencies.
 
@@ -97,9 +111,9 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
             ```
 
             - **2.1 File Size and Relevance Triage:**
-                1. **Respect Ignore Files:** Before scanning any files, you MUST check for the existence of `\.gitignore` and `.gitignore` files. If either or both exist, you MUST use their combined patterns to exclude files and directories from your analysis. The patterns in `\.gitignore` should take precedence over `.gitignore` if there are conflicts. This is the primary mechanism for avoiding token-heavy, irrelevant files like `node_modules`.
+                1. **Respect Ignore Files:** Before scanning any files, you MUST check for the existence of `.codexignore` and `.gitignore` files. If either or both exist, you MUST use their combined patterns to exclude files and directories from your analysis. Patterns in `.codexignore` should take precedence over `.gitignore` if there are conflicts. This is the primary mechanism for avoiding token-heavy, irrelevant files like `node_modules`.
                 2. **Efficiently List Relevant Files:** To list the files for analysis, you MUST use a command that respects the ignore files. For example, you can use `git ls-files --exclude-standard -co | xargs -n 1 dirname | sort -u` which lists all relevant directories (tracked by Git, plus other non-ignored files) without listing every single file. If Git is not used, you must construct a `find` command that reads the ignore files and prunes the corresponding paths.
-                3. **Fallback to Manual Ignores:** ONLY if neither `\.gitignore` nor `.gitignore` exist, you should fall back to manually ignoring common directories. Example command: `ls -lR -I 'node_modules' -I '.m2' -I 'build' -I 'dist' -I 'bin' -I 'target' -I '.git' -I '.idea' -I '.vscode'`.
+                3. **Fallback to Manual Ignores:** ONLY if neither `.codexignore` nor `.gitignore` exists, you should fall back to manually ignoring common directories. Example command: `ls -lR -I 'node_modules' -I '.m2' -I 'build' -I 'dist' -I 'bin' -I 'target' -I '.git' -I '.idea' -I '.vscode'`.
                 4. **Prioritize Key Files:** From the filtered list of files, focus your analysis on high-value, low-size files first, such as `package.json`, `pom.xml`, `requirements.txt`, `go.mod`, and other configuration or manifest files.
                 5. **Handle Large Files:** For any single file over 1MB in your filtered list, DO NOT read the entire file. Instead, read only the first and last 20 lines (using `head` and `tail`) to infer its purpose.
 
@@ -343,10 +357,33 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
        - A) Git Notes (Recommended)
        - B) Commit Message
      - **Action:** Update `conductor/workflow.md` based on the user's responses.
-     - **Commit State:** After the `workflow.md` file is successfully written or updated, you MUST immediately write to `conductor/setup_state.json` with the exact content:
-       `{"last_successful_step": "2.5_workflow"}`
+   - **Commit State:** After the `workflow.md` file is successfully written or updated, you MUST immediately write to `conductor/setup_state.json` with the exact content:
+     `{"last_successful_step": "2.5_workflow"}`
 
-### 2.6 Finalization
+### 2.6 Select Agent Skills (Codex-Safe)
+
+1. **Analyze and Recommend:**
+   - Read the skill catalog from `conductor/skills/catalog.md`, `${CODEX_HOME:-$HOME/.codex}/conductor/skills/catalog.md`, or `~/.codex/conductor/skills/catalog.md`.
+   - If no catalog exists, announce "Skills catalog not found. Skipping skill selection." and continue to Section 2.7.
+   - Detect applicable skills by matching catalog detection signals against project files, `conductor/product.md`, and `conductor/tech-stack.md`.
+   - Check installed Codex skills in repo-local `.codex/skills/` and global `${CODEX_HOME:-$HOME/.codex}/skills/` / `~/.codex/skills/`.
+
+2. **Determine Mode:**
+   - If no recommended skills are found, announce "No additional agent skills were recommended for this project context." and continue to Section 2.7.
+   - If recommended skills are found, present them with descriptions and ask:
+     - A) Use already installed matching skills.
+     - B) Show installation sources for missing skills.
+     - C) Skip.
+
+3. **Process Selection:**
+   - For already installed matching skills, read each relevant `SKILL.md` and record that the generated Conductor plan should apply those constraints.
+   - For missing skills, do not download anything automatically. Show the catalog URL/source and ask for explicit user approval before any network or external install step.
+   - If new skills are installed, instruct the user to restart/reload Codex skills if their environment requires it before continuing.
+
+4. **Commit State:** Upon completion or skip, write to `conductor/setup_state.json` with the exact content:
+   `{"last_successful_step": "2.6_agent_skills"}`
+
+### 2.7 Finalization
 
 1. **Generate Index File:**
 
@@ -467,7 +504,7 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
     a. **Define Track:** The approved title is the track description.
     b. **Generate Track-Specific Spec & Plan:**
     i. Automatically generate a detailed `spec.md` for this track.
-    ii. Automatically generate a `plan.md` for this track. - **CRITICAL:** The structure of the tasks must adhere to the principles outlined in the workflow file at `conductor/workflow.md`. For example, if the workflow specificies Test-Driven Development, each feature task must be broken down into a "Write Tests" sub-task followed by an "Implement Feature" sub-task. - **CRITICAL:** Include status markers `[ ]` for **EVERY** task and sub-task. The format must be: - Parent Task: `- [ ] Task: ...` - Sub-task: `- [ ] ...` - **CRITICAL: Inject Phase Completion Tasks.** You MUST read the `conductor/workflow.md` file to determine if a "Phase Completion Verification and Checkpointing Protocol" is defined. If this protocol exists, then for each **Phase** that you generate in `plan.md`, you MUST append a final meta-task to that phase. The format for this meta-task is: `- [ ] Task: Conductor - User Manual Verification '<Phase Name>' (Protocol in workflow.md)`. You MUST replace `<Phase Name>` with the actual name of the phase.
+    ii. Automatically generate a `plan.md` for this track. - **CRITICAL:** The structure of the tasks must adhere to the principles outlined in the workflow file at `conductor/workflow.md`. For example, if the workflow specifies Test-Driven Development, each feature task must be broken down into a "Write Tests" sub-task followed by an "Implement Feature" sub-task. - **CRITICAL:** Include status markers `[ ]` for **EVERY** task and sub-task. The format must be: - Parent Task: `- [ ] Task: ...` - Sub-task: `- [ ] ...` - **CRITICAL: Inject Phase Completion Tasks.** You MUST read the `conductor/workflow.md` file to determine if a "Phase Completion Verification and Checkpointing Protocol" is defined. If this protocol exists, then for each **Phase** that you generate in `plan.md`, you MUST append a final meta-task to that phase. The format for this meta-task is: `- [ ] Task: Conductor - User Manual Verification '<Phase Name>' (Protocol in workflow.md)`. You MUST replace `<Phase Name>` with the actual name of the phase.
     c. **Create Track Artifacts:**
     i. **Generate and Store Track ID:** Create a unique Track ID from the track description using format `shortname_YYYYMMDD` and store it. You MUST use this exact same ID for all subsequent steps for this track.
     ii. **Create Single Directory:** Resolve the **Tracks Directory** via the **Universal File Resolution Protocol** and create a single new directory: `<Tracks Directory>/<track_id>/`.
@@ -500,5 +537,5 @@ CRITICAL: When determining model complexity, Favor  deep reasoning. Context driv
 ### 3.4 Final Announcement
 
 1. **Announce Completion:** After the track has been created, announce that the project setup and initial track generation are complete.
-2. **Save Conductor Files:** Add and commit all files with the commit message `conductor(setup): Add conductor setup files`.
-3. **Next Steps:** Inform the user that they can now begin work by running `/conductor:implement`.
+2. **Save Conductor Files:** Conductor artifacts are local-only in this Codex adaptation. Do not stage or commit `conductor/` unless the user explicitly requests it.
+3. **Next Steps:** Inform the user that they can now begin work by running `$conductor-implement`.
