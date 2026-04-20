@@ -35,7 +35,7 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 
 2. **Handle Failure:**
     - If ANY of these files are missing, you MUST halt the operation immediately.
-    - Announce: "Conductor is not set up. Please run `/conductor:setup` to set up the environment."
+    - Announce: "Conductor is not set up. Please run `$conductor-setup` to set up the environment."
     - Do NOT proceed to New Track Initialization.
 
 ---
@@ -135,7 +135,24 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
     > "Does this plan look correct and cover all the necessary steps based on the spec and our workflow? Please suggest any changes or confirm."
     > Await user feedback and revise the `plan.md` content until confirmed.
 
-### 2.4 Create Track Artifacts and Update Main Plan
+### 2.4 Skill Recommendation (Codex-Safe)
+
+1. **Analyze Needs:**
+    - Check for a skill catalog at `conductor/skills/catalog.md`, `${CODEX_HOME:-$HOME/.codex}/conductor/skills/catalog.md`, or `~/.codex/conductor/skills/catalog.md`.
+    - If no catalog exists, announce that no Conductor skill catalog is available and skip this section.
+    - If a catalog exists, read it and compare the confirmed `spec.md`, `plan.md`, **Product Definition**, and **Tech Stack** against the catalog's detection signals.
+    - Check installed Codex skills in repo-local `.codex/skills/` and global `${CODEX_HOME:-$HOME/.codex}/skills/` / `~/.codex/skills/`.
+
+2. **Recommend Relevant Skills:**
+    - If relevant missing skills are found, present their names, descriptions, and why they match the track.
+    - Ask whether the user wants to install any of them.
+    - Do not download external skills automatically. If the user wants installation, explain that the catalog entry provides the source URL and ask before any network or external install step.
+
+3. **Apply Installed Skills:**
+    - If relevant skills are already installed, read their `SKILL.md` files and carry their constraints forward into the generated plan.
+    - If the user installs or adds new skills, ask them to restart/reload Codex skills if their environment requires it before implementation.
+
+### 2.5 Create Track Artifacts and Update Main Plan
 
 1. **Check for existing track name:** Before generating a new Track ID, resolve the **Tracks Directory** using the **Universal File Resolution Protocol**. List all existing track directories in that resolved path. Extract the short names from these track IDs (e.g., `shortname_YYYYMMDD` -> `shortname`). If the proposed short name for the new track (derived from the initial description) matches an existing short name, halt the `newTrack` creation. Explain that a track with that name already exists and suggest choosing a different name or resuming the existing track.
 2. **Generate Track ID:** Create a unique Track ID (e.g., `shortname_YYYYMMDD`).
@@ -183,4 +200,4 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
       (Replace `<Relative Track Path>` with the path to the track directory relative to the **Tracks Registry** file location.)
 
 7. **Announce Completion:** Inform the user:
-    > "New track '<track_id>' has been created and added to the tracks file. You can now start implementation by running `/conductor:implement`."
+    > "New track '<track_id>' has been created and added to the tracks file. You can now start implementation by running `$conductor-implement`."

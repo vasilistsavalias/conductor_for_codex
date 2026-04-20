@@ -35,6 +35,7 @@ Global install (user profile, offline):
   - `conductor-status`
   - `conductor-implement`
   - `conductor-newTrack`
+  - `conductor-review`
   - `conductor-revert`
   - `update-conductor`
 - Templates in global Codex home:
@@ -43,6 +44,9 @@ Global install (user profile, offline):
 - Global init command:
   - Windows: `%USERPROFILE%\.codex\bin\codex_conductor_init.cmd`
   - Linux: `$HOME/.local/bin/codex_conductor_init`
+- Skill recommendation catalog:
+  - Windows: `%USERPROFILE%\.codex\conductor\skills\catalog.md`
+  - Linux: `$HOME/.codex/conductor/skills/catalog.md`
 
 ## What Happens in a Repo
 
@@ -50,6 +54,7 @@ When you run repo init, it creates/updates local files in that repo:
 
 - `.codex/skills/<skill>/SKILL.md` (copied from global install)
 - `conductor/templates/...` (copied from global templates; non-destructive)
+- `conductor/skills/catalog.md` (copied from the global catalog; non-destructive)
 - `AGENTS.md` rule line:
   - `Always run $conductor-status before doing anything else.`
 - `.gitignore` line:
@@ -178,6 +183,8 @@ your-repo/
         SKILL.md
       conductor-newTrack/
         SKILL.md
+      conductor-review/
+        SKILL.md
       conductor-revert/
         SKILL.md
       update-conductor/
@@ -187,6 +194,8 @@ your-repo/
       workflow.md
       code_styleguides/
         *.md
+    skills/
+      catalog.md
   AGENTS.md
   .gitignore
 ```
@@ -196,12 +205,14 @@ Global install on Windows:
 ```text
 %USERPROFILE%\.codex\
   skills\
-    (same 6 skill folders)
+    (same 7 skill folders)
   conductor\
     templates\
       workflow.md
       code_styleguides\
         *.md
+    skills\
+      catalog.md
   bin\
     codex_conductor_init.cmd
     codex_conductor_init.ps1
@@ -212,12 +223,14 @@ Global install on Linux:
 ```text
 $HOME/.codex/
   skills/
-    (same 6 skill folders)
+    (same 7 skill folders)
   conductor/
     templates/
       workflow.md
       code_styleguides/
         *.md
+    skills/
+      catalog.md
 $HOME/.local/bin/
   codex_conductor_init
 ```

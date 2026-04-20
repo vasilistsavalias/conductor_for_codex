@@ -33,7 +33,7 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
     - **Tech Stack**
     - **Workflow**
 
-2. **Handle Failure:** If ANY of these are missing (or their resolved paths do not exist), Announce: "Conductor is not set up. Please run `/conductor:setup`." and HALT.
+2. **Handle Failure:** If ANY of these are missing (or their resolved paths do not exist), Announce: "Conductor is not set up. Please run `$conductor-setup`." and HALT.
 
 ---
 
@@ -41,12 +41,13 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 
 **PROTOCOL: Identify and select the track to be implemented.**
 
-1. **Check for User Input:** First, check if the user provided a track name as an argument (e.g., `/conductor:implement <track_description>`).
+1. **Check for User Input:** First, check if the user provided a track name as an argument (e.g., `$conductor-implement <track_description>`).
 
 2. **Locate and Parse Tracks Registry:**
 
     - Resolve the **Tracks Registry**.
-    - Read and parse this file. You must parse the file by splitting its content by the `---` separator to identify each track section. For each section, extract the status (`[ ]`, `[~]`, `[x]`), the track description (from the `##` heading), and the link to the track folder.
+    - Read and parse this file. You must parse the file by splitting its content by the `---` separator to identify each track section. For each section, extract the status (`[ ]`, `[~]`, `[x]`), the track description, and the link to the track folder.
+    - Support both the current standard format `- [ ] **Track: <Description>**` and the legacy format `## [ ] Track: <Description>`.
     - **CRITICAL:** If no track sections are found after parsing, announce: "The tracks file is empty or malformed. No tracks to implement." and halt.
 
 3. **Continue:** Immediately proceed to the next step to select a track.
@@ -85,6 +86,13 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
     a. **Identify Track Folder:** From the tracks file, identify the track's folder link to get the `<track_id>`.
     b. **Read Files:** - **Track Context:** Using the **Universal File Resolution Protocol**, resolve and read the **Specification** and **Implementation Plan** for the selected track. - **Workflow:** Resolve **Workflow** (via the **Universal File Resolution Protocol** using the project's index file).
     c. **Error Handling:** If you fail to read any of these files, you MUST stop and inform the user of the error.
+    d. **Activate Relevant Codex Skills:**
+       - Check for installed skills in repo-local `.codex/skills/`.
+       - Check global skills in `${CODEX_HOME:-$HOME/.codex}/skills/` and `~/.codex/skills/`.
+       - If `conductor/skills/catalog.md` or `${CODEX_HOME:-$HOME/.codex}/conductor/skills/catalog.md` exists, read it as a recommendation catalog.
+       - Based on the track's **Specification**, **Implementation Plan**, **Product Definition**, and catalog detection signals, determine whether any installed skills are relevant.
+       - For every relevant installed skill, read its `SKILL.md` and explicitly apply its guidelines during task execution.
+       - Do not download external skills during implementation unless the user explicitly asks.
 
 4. **Execute Tasks and Update Track Plan:**
     a. **Announce:** State that you will now execute the tasks from the track's **Implementation Plan** by following the procedures in the **Workflow**.
@@ -95,7 +103,7 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 5. **Finalize Track:**
     - After all tasks in the track's local **Implementation Plan** are completed, you MUST update the track's status in the **Tracks Registry**.
     - This requires finding the specific heading for the track (e.g., `## [~] Track: <Description>`) and replacing it with the completed status (e.g., `## [x] Track: <Description>`).
-    - **Commit Changes:** Stage the **Tracks Registry** file and commit with the message `chore(conductor): Mark track '<track_description>' as complete`.
+    - Because Conductor artifacts are local-only in this Codex adaptation, do not stage or commit the **Tracks Registry** unless the user explicitly requests Conductor artifact commits.
     - Announce that the track is fully complete and the tracks file has been updated.
 
 ---
@@ -142,8 +150,8 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 6. **Final Report:** Announce the completion of the synchronization process and provide a summary of the actions taken.
     - **Construct the Message:** Based on the records of which files were changed, construct a summary message.
     - **Commit Changes:**
-      - If any files were changed (**Product Definition**, **Tech Stack**, or **Product Guidelines**), you MUST stage them and commit them.
-      - **Commit Message:** `docs(conductor): Synchronize docs for track '<track_description>'`
+      - Because these files are Conductor artifacts in this Codex adaptation, do not stage or commit them unless the user explicitly requests Conductor artifact commits.
+      - If the user explicitly requests a commit, use: `docs(conductor): Synchronize docs for track '<track_description>'`.
     - **Example (if Product Definition was changed, but others were not):**
       > "Documentation synchronization is complete.
       >
@@ -164,25 +172,28 @@ CRITICAL: You must validate the success of every tool call. If any tool call fai
 2. **Ask for User Choice:** You MUST prompt the user with the available options for the completed track.
 
     > "Track '<track_description>' is now complete. What would you like to do?
-    > A. **Archive:** Move the track's folder to `conductor/archive/` and remove it from the tracks file.
-    > B. **Delete:** Permanently delete the track's folder and remove it from the tracks file.
-    > C. **Skip:** Do nothing and leave it in the tracks file.
-    > Please enter the number of your choice (A, B, or C)."
+    > A. **Review:** Run `$conductor-review` to verify changes before finalizing.
+    > B. **Archive:** Move the track's folder to `conductor/archive/` and remove it from the tracks file.
+    > C. **Delete:** Permanently delete the track's folder and remove it from the tracks file.
+    > D. **Skip:** Do nothing and leave it in the tracks file.
+    > Please enter the letter of your choice (A, B, C, or D)."
 
 3. **Handle User Response:**
-    - **If user chooses "A" (Archive):**
+    - **If user chooses "A" (Review):**
+      - Announce: "Please run `$conductor-review` to verify the completed work. You can archive or delete the track after the review."
+    - **If user chooses "B" (Archive):**
       i. **Create Archive Directory:** Check for the existence of `conductor/archive/`. If it does not exist, create it.
       ii. **Archive Track Folder:** Move the track's folder from its current location (resolved via the **Tracks Directory**) to `conductor/archive/<track_id>`.
       iii. **Remove from Tracks File:** Read the content of the **Tracks Registry** file, remove the entire section for the completed track (the part that starts with `---` and contains the track description), and write the modified content back to the file.
-      iv. **Commit Changes:** Stage the **Tracks Registry** file and `conductor/archive/`. Commit with the message `chore(conductor): Archive track '<track_description>'`.
-      v. **Announce Success:** Announce: "Track '<track_description>' has been successfully archived."
-    - **If user chooses "B" (Delete):**
+      iv. **Commit Changes:** Do not commit Conductor artifacts unless the user explicitly requests it.
+      v. **Announce Success:** Announce: "Track '<track_description>' has been successfully archived locally."
+    - **If user chooses "C" (Delete):**
       i. **CRITICAL WARNING:** Before proceeding, you MUST ask for a final confirmation due to the irreversible nature of the action. > "WARNING: This will permanently delete the track folder and all its contents. This action cannot be undone. Are you sure you want to proceed? (yes/no)"
       ii. **Handle Confirmation:** - **If 'yes'**:
       a. **Delete Track Folder:** Resolve the **Tracks Directory** and permanently delete the track's folder from `<Tracks Directory>/<track_id>`.
       b. **Remove from Tracks File:** Read the content of the **Tracks Registry** file, remove the entire section for the completed track, and write the modified content back to the file.
-      c. **Commit Changes:** Stage the **Tracks Registry** file and the deletion of the track directory. Commit with the message `chore(conductor): Delete track '<track_description>'`.
+      c. **Commit Changes:** Do not commit Conductor artifacts unless the user explicitly requests it.
       d. **Announce Success:** Announce: "Track '<track_description>' has been permanently deleted." - **If 'no' (or anything else)**:
       a. **Announce Cancellation:** Announce: "Deletion cancelled. The track has not been changed."
-    - **If user chooses "C" (Skip) or provides any other input:**
+    - **If user chooses "D" (Skip) or provides any other input:**
       - Announce: "Okay, the completed track will remain in your tracks file for now."
