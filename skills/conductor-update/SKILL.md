@@ -1,4 +1,6 @@
-﻿---`r`nname: conductor-update`r`ndescription: Update Codex Conductor prompts from upstream Gemini Conductor changelog
+﻿---
+name: conductor-update
+description: Update Codex Conductor prompts from upstream Gemini Conductor changelog
 ---
 <!-- markdownlint-disable MD013 -->
 
