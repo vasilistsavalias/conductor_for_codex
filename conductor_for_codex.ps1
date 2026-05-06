@@ -1,11 +1,15 @@
 ﻿<#
 .SYNOPSIS
-  Offline installer for Conductor skills in Codex (Windows).
+  Installer for Conductor skills in Codex (Windows).
 
 .DESCRIPTION
   Non-destructive by default:
   - Does NOT delete files.
   - Does NOT overwrite existing skill folders or init scripts.
+
+  With -ForceRefresh: removes and re-copies all conductor skill folders (force update).
+  With -PropagateAll: after global install, also updates all repos under the github_repos
+    directory that already have a .codex\skills\ folder.
 
   Installs into your user profile (no admin required):
   - Skills: %USERPROFILE%\.codex\skills\<skill>\SKILL.md
@@ -27,16 +31,31 @@
 .PARAMETER SkipPathUpdate
   If set, do not modify your user PATH.
 
+.PARAMETER ForceRefresh
+  If set, remove and re-copy conductor skill folders even if they already exist.
+  Use this after updating canonical skills in ./skills/ to push changes globally.
+
+.PARAMETER PropagateAll
+  If set, after global install propagate conductor skills to all repos under
+  the github_repos directory that contain a .codex\skills\ folder.
+  Automatically implies -ForceRefresh for the repo-local targets.
+
+.PARAMETER GithubReposDir
+  Root directory containing your GitHub repos. Default: %USERPROFILE%\Documents\programming\github_repos
+
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File .\conductor_for_codex.ps1
 
 .EXAMPLE
-  powershell -NoProfile -ExecutionPolicy Bypass -File .\conductor_for_codex.ps1 -SkipPathUpdate
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\conductor_for_codex.ps1 -ForceRefresh -PropagateAll
 #>
 param(
   [string]$CodexHome = (Join-Path $env:USERPROFILE '.codex'),
   [string]$BinDir = '',
-  [switch]$SkipPathUpdate
+  [switch]$SkipPathUpdate,
+  [switch]$ForceRefresh,
+  [switch]$PropagateAll,
+  [string]$GithubReposDir = (Join-Path $env:USERPROFILE 'Documents\programming\github_repos')
 )
 
 Set-StrictMode -Version Latest
@@ -94,8 +113,13 @@ foreach ($name in $skillNames) {
   $dstFile = Join-Path $dstDir 'SKILL.md'
 
   if (Test-Path $dstDir) {
-    Write-Host "  Exists, skipping: $dstDir" -ForegroundColor Gray
-    continue
+    if ($ForceRefresh) {
+      Remove-Item -Recurse -Force -Path $dstDir
+      Write-Host "  Removed (force-refresh): $dstDir" -ForegroundColor Yellow
+    } else {
+      Write-Host "  Exists, skipping: $dstDir" -ForegroundColor Gray
+      continue
+    }
   }
 
   Ensure-Dir $dstDir
@@ -103,9 +127,13 @@ foreach ($name in $skillNames) {
   Write-Host "  Installed: $dstDir" -ForegroundColor Green
 }
 
-# Install Conductor templates (skip if destination exists)
+# Install Conductor templates (skip if destination exists, unless -ForceRefresh)
 if (Test-Path $bundledTemplatesRoot) {
   $dstTemplatesRoot = Join-Path $CodexHome 'conductor\templates'
+  if ((Test-Path $dstTemplatesRoot) -and $ForceRefresh) {
+    Remove-Item -Recurse -Force -Path $dstTemplatesRoot
+    Write-Host "  Removed (force-refresh): $dstTemplatesRoot" -ForegroundColor Yellow
+  }
   if (Test-Path $dstTemplatesRoot) {
     Write-Host "  Exists, skipping templates: $dstTemplatesRoot" -ForegroundColor Gray
   } else {
@@ -244,5 +272,66 @@ Ensure-PathContains -dir $BinDir
 Write-Host ''
 Write-Host 'Run in any repo directory:' -ForegroundColor White
 Write-Host '  codex_conductor_init.cmd' -ForegroundColor White
+
+# --- PropagateAll: push conductor skills to all repos that already have .codex\skills\ ---
+if ($PropagateAll) {
+  Write-Host ''
+  Write-Host '===============================================' -ForegroundColor Cyan
+  Write-Host '  PropagateAll: Updating repo-local skills' -ForegroundColor Cyan
+  Write-Host '===============================================' -ForegroundColor Cyan
+
+  if (-not (Test-Path $GithubReposDir)) {
+    Write-Host "  WARNING: GithubReposDir not found: $GithubReposDir" -ForegroundColor Yellow
+    Write-Host "  Skipping PropagateAll. Pass -GithubReposDir to specify the correct path." -ForegroundColor Yellow
+  } else {
+    $globalSkillsRoot = Join-Path $CodexHome 'skills'
+    $repoDirs = Get-ChildItem -Path $GithubReposDir -Directory
+    $updatedRepos = 0
+    $skippedRepos = 0
+
+    foreach ($repo in $repoDirs) {
+      $repoSkillsDir = Join-Path $repo.FullName '.codex\skills'
+      if (-not (Test-Path $repoSkillsDir)) {
+        continue
+      }
+
+      Write-Host ''
+      Write-Host "  Repo: $($repo.Name)" -ForegroundColor White
+      $repoUpdated = $false
+
+      foreach ($name in $skillNames) {
+        $src = Join-Path $globalSkillsRoot $name
+        if (-not (Test-Path $src)) {
+          Write-Host "    WARNING: Global skill missing: $name" -ForegroundColor Yellow
+          continue
+        }
+
+        $dst = Join-Path $repoSkillsDir $name
+        if (Test-Path $dst) {
+          Remove-Item -Recurse -Force -Path $dst
+          Write-Host "    Refreshed: .codex\skills\$name" -ForegroundColor Green
+        } else {
+          Write-Host "    Added:     .codex\skills\$name" -ForegroundColor Green
+        }
+        Copy-Item -Recurse -Force -Path $src -Destination $dst
+        $repoUpdated = $true
+      }
+
+      if ($repoUpdated) { $updatedRepos++ } else { $skippedRepos++ }
+    }
+
+    # Hash verification for key skills
+    Write-Host ''
+    Write-Host '  Hash verification (conductor-implement, conductor-review, conductor-update):' -ForegroundColor White
+    $keySkills = @('conductor-implement', 'conductor-review', 'conductor-update')
+    foreach ($skill in $keySkills) {
+      $globalHash = (Get-FileHash (Join-Path $globalSkillsRoot "$skill\SKILL.md") -Algorithm SHA256).Hash
+      Write-Host "    Global $skill`: $globalHash" -ForegroundColor Gray
+    }
+
+    Write-Host ''
+    Write-Host "  Propagation complete: $updatedRepos repos updated." -ForegroundColor Cyan
+  }
+}
 
 

@@ -1,6 +1,6 @@
 ---
 name: conductor-status
-description: Displays the current progress of the project
+description: Displays the current progress of all tracks in the project
 ---
 <!-- markdownlint-disable MD013 -->
 
@@ -10,62 +10,89 @@ description: Displays the current progress of the project
 $ARGUMENTS
 ```
 
-CRITICAL: Conductor artifacts are **local-only**.
-
-- You MUST NOT modify anything outside the repository root.
-- Ensure that the `.gitignore` file includes the `conductor/` directory. Do not remove `conductor/` from the ignore rules. If the `conductor/` directory is not already listed in `.gitignore`, add it to the file.
-- You MUST NOT `git add`/`git commit` Conductor artifacts unless the user explicitly requests it.
-
-## 1.0 SYSTEM DIRECTIVE
-You are an AI agent. Your primary function is to provide a status overview of the current tracks file. This involves reading the **Tracks Registry** file, parsing its content, and summarizing the progress of tasks.
-
-CRITICAL: You must validate the success of every tool call. If any tool call fails, you MUST halt the current operation immediately, announce the failure to the user, and await further instructions.
+CRITICAL: Conductor artifacts are **local-only**. This command is read-only — it does not modify any files.
 
 ---
 
+## 1.0 SYSTEM DIRECTIVE
+
+You are an autonomous AI agent providing a status overview of the Conductor project. Read the tracks registry and all plan files, then output a structured summary. Do not modify any files. Do not stop for user confirmation.
+
+---
 
 ## 1.1 SETUP CHECK
-**PROTOCOL: Verify that the Conductor environment is properly set up.**
 
-1.  **Verify Core Context:** Using the **Universal File Resolution Protocol**, resolve and verify the existence of:
-    -   **Tracks Registry**
-    -   **Product Definition**
-    -   **Tech Stack**
-    -   **Workflow**
+**Universal File Resolution Protocol:** Check `conductor/<file>` first; if missing, read `conductor/index.md` for canonical paths.
 
-2.  **Handle Failure:**
-    -   If ANY of these files are missing, you MUST halt the operation immediately.
-    -   Announce: "Conductor is not set up. Please run `/conductor:setup` to set up the environment."
-    -   Do NOT proceed to Status Overview Protocol.
+Check for:
+- `conductor/tracks.md` (Tracks Registry)
+- `conductor/product.md`
+- `conductor/tech-stack.md`
+- `conductor/workflow.md`
+
+If any required file is missing: output a warning listing the missing files and suggest "Run `/conductor-setup` to initialize.", then continue with whatever data is available (do not halt completely — partial status is better than nothing).
 
 ---
 
 ## 2.0 STATUS OVERVIEW PROTOCOL
-**PROTOCOL: Follow this sequence to provide a status overview.**
 
-### 2.1 Read Project Plan
-1.  **Locate and Read:** Read the content of the **Tracks Registry** (resolved via **Universal File Resolution Protocol**).
-2.  **Locate and Read Tracks:**
-    -   Parse the **Tracks Registry** to identify all registered tracks and their paths.
-        *   **Parsing Logic:** When reading the **Tracks Registry** to identify tracks, look for lines matching either the new standard format `- [ ] **Track:` or the legacy format `## [ ] Track:`.
-    -   For each track, resolve and read its **Implementation Plan** (using **Universal File Resolution Protocol** via the track's index file).
+### 2.1 Read the Tracks Registry
 
-### 2.2 Parse and Summarize Plan
-1.  **Parse Content:**
-    -   Identify major project phases/sections (e.g., top-level markdown headings).
-    -   Identify individual tasks and their current status (e.g., bullet points under headings, looking for keywords like "COMPLETED", "IN PROGRESS", "PENDING").
-2.  **Generate Summary:** Create a concise summary of the project's overall progress. This should include:
-    -   The total number of major phases.
-    -   The total number of tasks.
-    -   The number of tasks completed, in progress, and pending.
+1. Read `conductor/tracks.md`.
+2. Parse all track sections. A track section is delimited by `---`. For each section, extract:
+   - Status: `[ ]` (new), `[~]` (in_progress), `[x]` (implemented — pending review)
+   - Track description (from `**Track: ...**` line)
+   - Track folder link
 
-### 2.3 Present Status Overview
-1.  **Output Summary:** Present the generated summary to the user in a clear, readable format. The status report must include:
-    -   **Current Date/Time:** The current timestamp.
-    -   **Project Status:** A high-level summary of progress (e.g., "On Track", "Behind Schedule", "Blocked").
-    -   **Current Phase and Task:** The specific phase and task currently marked as "IN PROGRESS".
-    -   **Next Action Needed:** The next task listed as "PENDING".
-    -   **Blockers:** Any items explicitly marked as blockers in the plan.
-    -   **Phases (total):** The total number of major phases.
-    -   **Tasks (total):** The total number of tasks.
-    -   **Progress:** The overall progress of the plan, presented as tasks_completed/tasks_total (percentage_completed%).
+3. For each track, read its `plan.md` via the track's `index.md`. Parse tasks:
+   - Count total tasks: lines matching `- [ ] Task:`, `- [~] Task:`, `- [x] Task:`
+   - Count completed tasks: `- [x] Task:`
+   - Identify current in-progress task: `- [~] Task:` (if any)
+   - Identify next pending task: first `- [ ] Task:` (if any)
+   - Identify blockers: tasks or lines explicitly labeled "BLOCKED" or "BLOCKER"
+
+### 2.2 Generate and Output Status Report
+
+Output the following format:
+
+```
+═══════════════════════════════════════
+  CONDUCTOR STATUS REPORT
+  <current date and time>
+═══════════════════════════════════════
+
+PROJECT: <product name from conductor/product.md>
+
+TRACKS SUMMARY
+  Total tracks:       <N>
+  New (not started):  <N>
+  In progress:        <N>
+  Implemented:        <N>  ← pending review
+  Archived:           (not tracked here — check conductor/archive/)
+
+─────────────────────────────────────
+<For each track, in registry order:>
+
+[<status icon>] Track: <description>
+    ID:       <track_id>
+    Progress: <completed>/<total> tasks (<percent>%)
+    Current:  <current in-progress task, or "—">
+    Next:     <next pending task, or "All done — run /conductor-review">
+    Blockers: <blocker text, or "None">
+
+─────────────────────────────────────
+OVERALL PROGRESS: <total_completed>/<total_tasks> tasks (<percent>%)
+STATUS: <On Track | In Progress | Blocked | All Implemented>
+═══════════════════════════════════════
+```
+
+Status icons:
+- `[ ]` new
+- `[~]` in progress
+- `[x]` implemented (review pending)
+
+Overall STATUS:
+- "Blocked" if any blocker exists
+- "All Implemented" if all tracks are `[x]` or archived
+- "In Progress" if any track is `[~]`
+- "On Track" if all tracks are `[ ]` (not yet started)

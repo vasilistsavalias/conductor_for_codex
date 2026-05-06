@@ -35,7 +35,6 @@ Global install (user profile, offline):
   - `conductor-status`
   - `conductor-implement`
   - `conductor-newTrack`
-  - `conductor-review`
   - `conductor-revert`
   - `conductor-review`
   - `conductor-update`
@@ -184,8 +183,6 @@ your-repo/
         SKILL.md
       conductor-newTrack/
         SKILL.md
-      conductor-review/
-        SKILL.md
       conductor-revert/
         SKILL.md
       conductor-review/
@@ -248,3 +245,24 @@ Rerunning installer or repo init is safe and idempotent.
 
 If you want to refresh one specific repo-local skill folder, remove only that folder and rerun repo init.
 
+### Force-Refresh (Push Updated Skills)
+
+After updating conductor skills in this repo (e.g., via `conductor-update`), push the changes to your global install and all local repos:
+
+Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\conductor_for_codex.ps1 -ForceRefresh -PropagateAll
+```
+
+Linux:
+
+```bash
+FORCE_REFRESH=1 PROPAGATE_ALL=1 bash ./conductor_for_codex.sh
+```
+
+Flags:
+
+- `-ForceRefresh` / `FORCE_REFRESH=1`: remove and re-copy conductor skill folders even if they exist. Use after updating skills.
+- `-PropagateAll` / `PROPAGATE_ALL=1`: after updating global skills, also refresh conductor skills in every repo under the github\_repos directory that has a `.codex/skills/` folder.
+- `-GithubReposDir` / `GITHUB_REPOS_DIR`: override the repos root directory (default: `%USERPROFILE%\Documents\programming\github_repos`).

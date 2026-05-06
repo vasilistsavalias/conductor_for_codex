@@ -1,11 +1,15 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 #
 # conductor_for_codex.sh
 #
-# Offline installer for Codex + Conductor skills (no network).
+# Installer for Codex + Conductor skills.
 # Non-destructive by default:
 # - Does NOT delete files.
 # - Does NOT overwrite existing files/folders.
+#
+# With FORCE_REFRESH=1: removes and re-copies all conductor skill folders.
+# With PROPAGATE_ALL=1: after global install, also updates all repos under
+#   GITHUB_REPOS_DIR that have a .codex/skills/ folder.
 #
 # Installs into your HOME by default (no sudo):
 #   $HOME/.codex/skills/<skill>/SKILL.md
@@ -18,12 +22,16 @@
 #
 # Override paths via env vars:
 #   CODEX_HOME=/custom/.codex BIN_DIR=/custom/bin bash ./conductor_for_codex.sh
+#   FORCE_REFRESH=1 PROPAGATE_ALL=1 bash ./conductor_for_codex.sh
 #
 set -euo pipefail
 
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 NO_PATH_HINT="${NO_PATH_HINT:-0}"
+FORCE_REFRESH="${FORCE_REFRESH:-0}"
+PROPAGATE_ALL="${PROPAGATE_ALL:-0}"
+GITHUB_REPOS_DIR="${GITHUB_REPOS_DIR:-$HOME/Documents/programming/github_repos}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLED_SKILLS_ROOT="$SCRIPT_DIR/skills"
@@ -41,8 +49,10 @@ fi
 
 mkdir -p "$CODEX_HOME/skills" "$BIN_DIR"
 
-# Install skills one-by-one (skip if destination exists)
-for s in conductor-setup conductor-status conductor-implement conductor-newTrack conductor-revert conductor-review conductor-update; do
+SKILL_NAMES=(conductor-setup conductor-status conductor-implement conductor-newTrack conductor-revert conductor-review conductor-update)
+
+# Install skills one-by-one
+for s in "${SKILL_NAMES[@]}"; do
   src_file="$BUNDLED_SKILLS_ROOT/$s/SKILL.md"
   dst_dir="$CODEX_HOME/skills/$s"
   dst_file="$dst_dir/SKILL.md"
@@ -53,16 +63,26 @@ for s in conductor-setup conductor-status conductor-implement conductor-newTrack
   fi
 
   if [[ -e "$dst_dir" ]]; then
-    echo "  Exists, skipping: $dst_dir"
-  else
-    mkdir -p "$dst_dir"
-    cp -a "$src_file" "$dst_file"
-    echo "  Installed: $dst_dir"
+    if [[ "$FORCE_REFRESH" == "1" ]]; then
+      rm -rf "$dst_dir"
+      echo "  Removed (force-refresh): $dst_dir"
+    else
+      echo "  Exists, skipping: $dst_dir"
+      continue
+    fi
   fi
+
+  mkdir -p "$dst_dir"
+  cp -a "$src_file" "$dst_file"
+  echo "  Installed: $dst_dir"
 done
 
-# Install templates (skip if destination exists)
+# Install templates
 if [[ -d "$BUNDLED_TEMPLATES_ROOT" ]]; then
+  if [[ -e "$CODEX_HOME/conductor/templates" ]] && [[ "$FORCE_REFRESH" == "1" ]]; then
+    rm -rf "$CODEX_HOME/conductor/templates"
+    echo "  Removed (force-refresh): $CODEX_HOME/conductor/templates"
+  fi
   if [[ -e "$CODEX_HOME/conductor/templates" ]]; then
     echo "  Exists, skipping templates: $CODEX_HOME/conductor/templates"
   else
@@ -135,17 +155,11 @@ if [[ -e "$REPO_ROOT/AGENTS.md" ]]; then
   fi
   echo "  Ensured AGENTS.md contains conductor-status rule"
 else
-  cat >"$REPO_ROOT/AGENTS.md" <<'AGENTS_EOF'
-# AGENTS.md
-
-Always run $conductor-status before doing anything else.
-
-
-AGENTS_EOF
+  printf '# AGENTS.md\n\nAlways run $conductor-status before doing anything else.\n' >"$REPO_ROOT/AGENTS.md"
   echo "  Created AGENTS.md"
 fi
 
-# Ensure conductor/ ignore exists (no duplicates if grep is available)
+# Ensure conductor/ ignore exists
 if [[ ! -f "$REPO_ROOT/.gitignore" ]]; then
   echo "conductor/" >"$REPO_ROOT/.gitignore"
 elif command -v grep >/dev/null 2>&1; then
@@ -173,4 +187,57 @@ echo ""
 echo "Run in any repo directory:"
 echo "  codex_conductor_init"
 
+# --- PropagateAll: push conductor skills to all repos that already have .codex/skills/ ---
+if [[ "$PROPAGATE_ALL" == "1" ]]; then
+  echo ""
+  echo "==========================================="
+  echo "  PropagateAll: Updating repo-local skills"
+  echo "==========================================="
 
+  if [[ ! -d "$GITHUB_REPOS_DIR" ]]; then
+    echo "  WARNING: GITHUB_REPOS_DIR not found: $GITHUB_REPOS_DIR"
+    echo "  Set GITHUB_REPOS_DIR=/path/to/repos to specify the correct path."
+  else
+    global_skills="$CODEX_HOME/skills"
+    updated=0
+
+    for repo in "$GITHUB_REPOS_DIR"/*/; do
+      repo_skills="$repo/.codex/skills"
+      [[ -d "$repo_skills" ]] || continue
+
+      repo_name="$(basename "$repo")"
+      echo ""
+      echo "  Repo: $repo_name"
+
+      for s in "${SKILL_NAMES[@]}"; do
+        src="$global_skills/$s"
+        dst="$repo_skills/$s"
+        [[ -d "$src" ]] || { echo "    WARNING: Global skill missing: $s"; continue; }
+
+        if [[ -e "$dst" ]]; then
+          rm -rf "$dst"
+          echo "    Refreshed: .codex/skills/$s"
+        else
+          echo "    Added:     .codex/skills/$s"
+        fi
+        cp -a "$src" "$dst"
+      done
+
+      updated=$((updated + 1))
+    done
+
+    # Hash verification for key skills
+    echo ""
+    echo "  Hash verification:"
+    for skill in conductor-implement conductor-review conductor-update; do
+      skill_file="$global_skills/$skill/SKILL.md"
+      if [[ -f "$skill_file" ]]; then
+        hash_val=$(sha256sum "$skill_file" 2>/dev/null | awk '{print $1}' || shasum -a 256 "$skill_file" | awk '{print $1}')
+        echo "    Global $skill: $hash_val"
+      fi
+    done
+
+    echo ""
+    echo "  Propagation complete: $updated repos updated."
+  fi
+fi
