@@ -1,4 +1,4 @@
----
+﻿---
 description: Update Codex Conductor prompts from upstream Gemini Conductor changelog
 ---
 <!-- markdownlint-disable MD013 -->
@@ -35,17 +35,16 @@ Local changelog (global Codex home):
    - Update the local changelog to include the new content.
    - Review upstream repo changes that impact prompts or workflow.
 5. Update Codex prompts to match upstream behavior, adapted for Codex:
-   - `.codex/skills/conductor-setup/SKILL.md`
-   - `.codex/skills/conductor-implement/SKILL.md`
-   - `.codex/skills/conductor-newTrack/SKILL.md`
-   - `.codex/skills/conductor-review/SKILL.md`
-   - `.codex/skills/conductor-revert/SKILL.md`
-   - `.codex/skills/conductor-status/SKILL.md`
-   - `conductor/templates/`
-   - `conductor/skills/catalog.md`
+   - `.codex/prompts/conductor_setup.md`
+   - `.codex/prompts/conductor_implement.md`
+   - `.codex/prompts/conductor_newTrack.md`
+   - `.codex/prompts/conductor_revert.md`
+   - `.codex/prompts/conductor_status.md`
+   - `.codex/prompts/conductor_review.md`
 6. Summarize the differences and any prompt changes made.
 
 ## 3.0 NOTES
 
 - Codex cannot directly update Gemini extensions. This workflow emulates updates by syncing prompt content.
 - Keep Codex-specific rules intact (Conductor local-only, no auto-commit unless explicitly asked).
+

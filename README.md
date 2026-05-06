@@ -37,6 +37,7 @@ Global install (user profile, offline):
   - `conductor-newTrack`
   - `conductor-review`
   - `conductor-revert`
+  - `conductor-review`
   - `update-conductor`
 - Templates in global Codex home:
   - Windows: `%USERPROFILE%\.codex\conductor\templates\...`
@@ -186,6 +187,8 @@ your-repo/
       conductor-review/
         SKILL.md
       conductor-revert/
+        SKILL.md
+      conductor-review/
         SKILL.md
       update-conductor/
         SKILL.md
