@@ -78,7 +78,7 @@ Ensure-Dir (Join-Path $CodexHome 'skills')
 $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 $bundledSkillsRoot = Join-Path $scriptDir 'skills'
 $bundledTemplatesRoot = Join-Path $scriptDir 'templates'
-$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','conductor-review','update-conductor')
+$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','conductor-review','conductor-update')
 
 if (-not (Test-Path $bundledSkillsRoot)) {
   throw "Missing bundled skills directory: $bundledSkillsRoot"
@@ -161,7 +161,7 @@ Write-Host "  codex_conductor_init (Conductor for Codex)" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','conductor-review','update-conductor')
+$skillNames = @('conductor-setup','conductor-status','conductor-implement','conductor-newTrack','conductor-revert','conductor-review','conductor-update')
 $dstSkillsRoot = Join-Path $RepoRoot '.codex\skills'
 Ensure-Dir $dstSkillsRoot
 
@@ -244,4 +244,5 @@ Ensure-PathContains -dir $BinDir
 Write-Host ''
 Write-Host 'Run in any repo directory:' -ForegroundColor White
 Write-Host '  codex_conductor_init.cmd' -ForegroundColor White
+
 

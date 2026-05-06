@@ -1,4 +1,4 @@
-# conductor_for_codex
+﻿# conductor_for_codex
 
 Portable Conductor-style bootstrap for Codex, using transparent plain markdown skill files.
 
@@ -38,7 +38,7 @@ Global install (user profile, offline):
   - `conductor-review`
   - `conductor-revert`
   - `conductor-review`
-  - `update-conductor`
+  - `conductor-update`
 - Templates in global Codex home:
   - Windows: `%USERPROFILE%\.codex\conductor\templates\...`
   - Linux: `$HOME/.codex/conductor/templates/...`
@@ -190,7 +190,7 @@ your-repo/
         SKILL.md
       conductor-review/
         SKILL.md
-      update-conductor/
+      conductor-update/
         SKILL.md
   conductor/
     templates/
@@ -247,3 +247,4 @@ Rerunning installer or repo init is safe and idempotent.
 - Duplicate required lines are avoided.
 
 If you want to refresh one specific repo-local skill folder, remove only that folder and rerun repo init.
+
