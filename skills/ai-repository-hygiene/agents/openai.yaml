@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Repository Hygiene"
+  short_description: "Keep AI workspace artifacts out of shared repositories"
+  default_prompt: "Use $ai-repository-hygiene to audit this repository, migrate safe private artifacts to its external sidecar, clean public ignore files without affecting product code, and verify Git and Docker integrity."
